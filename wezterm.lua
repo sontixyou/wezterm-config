@@ -11,7 +11,7 @@ config.initial_cols = 120
 config.initial_rows = 40
 
 -- or, changing the font size and color scheme.
-config.font_size = 10
+config.font_size = 16
 config.font = wezterm.font 'SF Mono Square'
 config.colors = {
   cursor_bg = '#ff22f0',
