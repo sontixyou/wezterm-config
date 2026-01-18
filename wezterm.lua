@@ -31,6 +31,20 @@ config.default_cwd = os.getenv("HOME") .. "/projects/"
 config.scrollback_lines = 100000
 config.hide_tab_bar_if_only_one_tab = true
 
+-- 選択した文字列を自動的にクリップボードにコピー
+config.selection_word_boundary = " \t\n{}[]()\"'`"
+
+-- マウスで選択した文字列をクリップボードにコピー
+config.mouse_bindings = {
+  {
+    event = { Up = { streak = 1, button = 'Left' } },
+    mods = 'NONE',
+    action = wezterm.action_callback(function(window, pane)
+      window:perform_action(wezterm.action.CompleteSelectionOrOpenLinkAtMouseCursor 'ClipboardAndPrimarySelection', pane)
+    end),
+  },
+}
+
 -- Finally, return the configuration to wezterm:
 config.leader = { key = 'w', mods = 'CTRL', timeout_milliseconds = 1000 }
 
