@@ -16,7 +16,14 @@ config.font = wezterm.font 'SF Mono Square'
 config.colors = {
   cursor_bg = '#ff22f0',
   foreground = '#ffffff',
-  background = "#24283b"
+  background = "#24283b",
+  split = '#5c9f5c',
+}
+
+-- 非アクティブなペインを暗くしてアクティブなペインを目立たせる
+config.inactive_pane_hsb = {
+  saturation = 0.8,
+  brightness = 0.6,
 }
 
 config.default_cwd = os.getenv("HOME") .. "/projects/"
