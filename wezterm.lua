@@ -25,8 +25,38 @@ config.scrollback_lines = 100000
 config.hide_tab_bar_if_only_one_tab = true
 
 -- Finally, return the configuration to wezterm:
+config.leader = { key = 'w', mods = 'CTRL', timeout_milliseconds = 1000 }
+
 config.keys = {
   {key="Enter", mods="SHIFT", action=wezterm.action{SendString="\x1b\r"}},
+
+  -- Ctrl+W, C でワークスペースを作成
+  {
+    key = 'c',
+    mods = 'LEADER',
+    action = wezterm.action.PromptInputLine {
+      description = 'Enter name for new workspace',
+      action = wezterm.action_callback(function(window, pane, line)
+        if line then
+          window:perform_action(
+            wezterm.action.SwitchToWorkspace {
+              name = line,
+            },
+            pane
+          )
+        end
+      end),
+    },
+  },
+
+  -- Ctrl+W, S でワークスペース一覧を表示して切り替え
+  {
+    key = 's',
+    mods = 'LEADER',
+    action = wezterm.action.ShowLauncherArgs {
+      flags = 'FUZZY|WORKSPACES',
+    },
+  },
 }
 
 return config
