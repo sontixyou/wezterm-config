@@ -57,6 +57,57 @@ end)
 config.keys = {
   {key="Enter", mods="SHIFT", action=wezterm.action{SendString="\x1b\r"}},
 
+  -- ペイン分割
+  -- Ctrl+W, % で左右に分割
+  {
+    key = '%',
+    mods = 'LEADER|SHIFT',
+    action = wezterm.action.SplitHorizontal { domain = 'CurrentPaneDomain' },
+  },
+  -- Ctrl+W, " で上下に分割
+  {
+    key = '"',
+    mods = 'LEADER|SHIFT',
+    action = wezterm.action.SplitVertical { domain = 'CurrentPaneDomain' },
+  },
+
+  -- ペイン移動
+  -- Ctrl+W, h で左のペインへ移動
+  {
+    key = 'h',
+    mods = 'LEADER',
+    action = wezterm.action.ActivatePaneDirection 'Left',
+  },
+  -- Ctrl+W, j で下のペインへ移動
+  {
+    key = 'j',
+    mods = 'LEADER',
+    action = wezterm.action.ActivatePaneDirection 'Down',
+  },
+  -- Ctrl+W, k で上のペインへ移動
+  {
+    key = 'k',
+    mods = 'LEADER',
+    action = wezterm.action.ActivatePaneDirection 'Up',
+  },
+  -- Ctrl+W, l で右のペインへ移動
+  {
+    key = 'l',
+    mods = 'LEADER',
+    action = wezterm.action.ActivatePaneDirection 'Right',
+  },
+
+  -- ペインサイズ変更モードを有効化
+  -- Ctrl+N でリサイズモードに入る
+  {
+    key = 'n',
+    mods = 'CTRL',
+    action = wezterm.action.ActivateKeyTable {
+      name = 'resize_pane',
+      one_shot = false,
+    },
+  },
+
   -- Ctrl+W, C でワークスペースを作成
   {
     key = 'c',
@@ -83,6 +134,22 @@ config.keys = {
     action = wezterm.action.ShowLauncherArgs {
       flags = 'FUZZY|WORKSPACES',
     },
+  },
+}
+
+-- ペインリサイズモード用のキーテーブル
+config.key_tables = {
+  resize_pane = {
+    { key = 'LeftArrow', action = wezterm.action.AdjustPaneSize { 'Left', 5 } },
+    { key = 'h', action = wezterm.action.AdjustPaneSize { 'Left', 5 } },
+    { key = 'RightArrow', action = wezterm.action.AdjustPaneSize { 'Right', 5 } },
+    { key = 'l', action = wezterm.action.AdjustPaneSize { 'Right', 5 } },
+    { key = 'UpArrow', action = wezterm.action.AdjustPaneSize { 'Up', 5 } },
+    { key = 'k', action = wezterm.action.AdjustPaneSize { 'Up', 5 } },
+    { key = 'DownArrow', action = wezterm.action.AdjustPaneSize { 'Down', 5 } },
+    { key = 'j', action = wezterm.action.AdjustPaneSize { 'Down', 5 } },
+    -- Escapeキーでリサイズモードを終了
+    { key = 'Escape', action = 'PopKeyTable' },
   },
 }
 
