@@ -27,6 +27,12 @@ config.hide_tab_bar_if_only_one_tab = true
 -- Finally, return the configuration to wezterm:
 config.leader = { key = 'w', mods = 'CTRL', timeout_milliseconds = 1000 }
 
+-- ウィンドウタイトルにワークスペース名を表示
+wezterm.on('format-window-title', function(tab, pane, tabs, panes, config)
+  local workspace = wezterm.mux.get_active_workspace()
+  return 'wezterm - ' .. workspace
+end)
+
 config.keys = {
   {key="Enter", mods="SHIFT", action=wezterm.action{SendString="\x1b\r"}},
 
