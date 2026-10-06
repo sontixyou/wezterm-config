@@ -1,5 +1,6 @@
 -- Pull in the wezterm API
 local wezterm = require 'wezterm'
+local act = wezterm.action
 
 -- This will hold the configuration.
 local config = wezterm.config_builder()
@@ -21,32 +22,47 @@ config.colors = {
 }
 
 -- 非アクティブなペインを暗くしてアクティブなペインを目立たせる
--- config.inactive_pane_hsb = {
---   saturation = 0.8,
---   brightness = 0.6,
--- }
+config.inactive_pane_hsb = {
+  saturation = 0.8,
+  brightness = 0.6,
+}
 
 config.default_cwd = os.getenv("HOME") .. "/projects/"
 
 config.scrollback_lines = 100000
-config.hide_tab_bar_if_only_one_tab = true
 
--- 選択した文字列を自動的にクリップボードにコピー
+-- タブバー: 2枚以上で表示。タブ番号を出して Alt+数字 と対応させる
+config.hide_tab_bar_if_only_one_tab = true
+config.use_fancy_tab_bar = false
+config.tab_max_width = 24
+
+-- 左Altは修飾キーとして送る（Alt+hjkl 等のため）。右Altは記号・日本語入力用に残す
+config.send_composed_key_when_left_alt_is_pressed = false
+config.send_composed_key_when_right_alt_is_pressed = true
+
+-- URLクリックでブラウザを開く（tmux内でも動作）
+config.hyperlink_rules = wezterm.default_hyperlink_rules()
+
 config.selection_word_boundary = " \t\n{}[]()\"'`"
 
--- マウスで選択した文字列をクリップボードにコピー
+-- 選択を離したらクリップボードにコピー。選択でなくURL上のクリックならブラウザで開く
+-- マウス報告中のアプリ内では Shift+クリックで WezTerm 側が処理する
+local select_or_open = wezterm.action_callback(function(window, pane)
+  window:perform_action(act.CompleteSelectionOrOpenLinkAtMouseCursor 'ClipboardAndPrimarySelection', pane)
+end)
+
 config.mouse_bindings = {
   {
     event = { Up = { streak = 1, button = 'Left' } },
     mods = 'NONE',
-    action = wezterm.action_callback(function(window, pane)
-      window:perform_action(wezterm.action.CompleteSelectionOrOpenLinkAtMouseCursor 'ClipboardAndPrimarySelection', pane)
-    end),
+    action = select_or_open,
+  },
+  {
+    event = { Up = { streak = 1, button = 'Left' } },
+    mods = 'SHIFT',
+    action = select_or_open,
   },
 }
-
--- Finally, return the configuration to wezterm:
-config.leader = { key = 'w', mods = 'CTRL', timeout_milliseconds = 1000 }
 
 -- ウィンドウタイトルにワークスペース名を表示
 wezterm.on('format-window-title', function(tab, pane, tabs, panes, config)
@@ -54,101 +70,110 @@ wezterm.on('format-window-title', function(tab, pane, tabs, panes, config)
   return 'wezterm - ' .. workspace
 end)
 
+wezterm.on('format-tab-title', function(tab, tabs, panes, config, hover, max_width)
+  local title = tab.tab_title
+  if not title or #title == 0 then
+    title = tab.active_pane.title
+  end
+  return ' ' .. (tab.tab_index + 1) .. ': ' .. title .. ' '
+end)
+
+config.leader = { key = 'b', mods = 'CTRL', timeout_milliseconds = 1000 }
+
 config.keys = {
   {key="Enter", mods="SHIFT", action=wezterm.action{SendString="\x1b\r"}},
 
+  -- Ctrl+b, Ctrl+b でアプリに Ctrl+b を送る
+  { key = 'b', mods = 'LEADER|CTRL', action = act.SendKey { key = 'b', mods = 'CTRL' } },
+
   -- ペイン分割
-  -- Ctrl+W, % で左右に分割
-  {
-    key = '%',
-    mods = 'LEADER|SHIFT',
-    action = wezterm.action.SplitHorizontal { domain = 'CurrentPaneDomain' },
-  },
-  -- Ctrl+W, " で上下に分割
-  {
-    key = '"',
-    mods = 'LEADER|SHIFT',
-    action = wezterm.action.SplitVertical { domain = 'CurrentPaneDomain' },
-  },
+  { key = '%', mods = 'LEADER|SHIFT', action = act.SplitHorizontal { domain = 'CurrentPaneDomain' } },
+  { key = '"', mods = 'LEADER|SHIFT', action = act.SplitVertical { domain = 'CurrentPaneDomain' } },
 
   -- ペイン移動
-  -- Ctrl+W, h で左のペインへ移動
-  {
-    key = 'h',
-    mods = 'LEADER',
-    action = wezterm.action.ActivatePaneDirection 'Left',
-  },
-  -- Ctrl+W, j で下のペインへ移動
-  {
-    key = 'j',
-    mods = 'LEADER',
-    action = wezterm.action.ActivatePaneDirection 'Down',
-  },
-  -- Ctrl+W, k で上のペインへ移動
-  {
-    key = 'k',
-    mods = 'LEADER',
-    action = wezterm.action.ActivatePaneDirection 'Up',
-  },
-  -- Ctrl+W, l で右のペインへ移動
-  {
-    key = 'l',
-    mods = 'LEADER',
-    action = wezterm.action.ActivatePaneDirection 'Right',
-  },
+  { key = 'h', mods = 'LEADER', action = act.ActivatePaneDirection 'Left' },
+  { key = 'j', mods = 'LEADER', action = act.ActivatePaneDirection 'Down' },
+  { key = 'k', mods = 'LEADER', action = act.ActivatePaneDirection 'Up' },
+  { key = 'l', mods = 'LEADER', action = act.ActivatePaneDirection 'Right' },
+  { key = 'h', mods = 'ALT', action = act.ActivatePaneDirection 'Left' },
+  { key = 'j', mods = 'ALT', action = act.ActivatePaneDirection 'Down' },
+  { key = 'k', mods = 'ALT', action = act.ActivatePaneDirection 'Up' },
+  { key = 'l', mods = 'ALT', action = act.ActivatePaneDirection 'Right' },
 
-  -- ペインサイズ変更モードを有効化
-  -- Ctrl+N でリサイズモードに入る
+  -- ペインを閉じる / ズーム
+  { key = 'x', mods = 'LEADER', action = act.CloseCurrentPane { confirm = true } },
+  { key = 'z', mods = 'LEADER', action = act.TogglePaneZoomState },
+
+  -- ペインリサイズモード（Esc で終了）
   {
     key = 'n',
-    mods = 'CTRL',
-    action = wezterm.action.ActivateKeyTable {
-      name = 'resize_pane',
-      one_shot = false,
-    },
+    mods = 'ALT',
+    action = act.ActivateKeyTable { name = 'resize_pane', one_shot = false },
   },
 
-  -- Ctrl+W, C でワークスペースを作成
+  -- タブ
+  { key = 'c', mods = 'LEADER', action = act.SpawnTab 'CurrentPaneDomain' },
+  { key = 'n', mods = 'LEADER', action = act.ActivateTabRelative(1) },
+  { key = 'p', mods = 'LEADER', action = act.ActivateTabRelative(-1) },
   {
-    key = 'c',
+    key = ',',
     mods = 'LEADER',
-    action = wezterm.action.PromptInputLine {
+    action = act.PromptInputLine {
+      description = 'Enter new tab name',
+      action = wezterm.action_callback(function(window, pane, line)
+        if line then
+          window:active_tab():set_title(line)
+        end
+      end),
+    },
+  },
+  { key = '1', mods = 'ALT', action = act.ActivateTab(0) },
+  { key = '2', mods = 'ALT', action = act.ActivateTab(1) },
+  { key = '3', mods = 'ALT', action = act.ActivateTab(2) },
+  { key = '4', mods = 'ALT', action = act.ActivateTab(3) },
+  { key = '5', mods = 'ALT', action = act.ActivateTab(4) },
+  { key = '6', mods = 'ALT', action = act.ActivateTab(5) },
+  { key = '7', mods = 'ALT', action = act.ActivateTab(6) },
+  { key = '8', mods = 'ALT', action = act.ActivateTab(7) },
+  { key = '9', mods = 'ALT', action = act.ActivateTab(8) },
+
+  -- スクロールバック: コピーモード / 検索
+  { key = '[', mods = 'LEADER', action = act.ActivateCopyMode },
+  { key = 'f', mods = 'SUPER', action = act.Search { CaseInSensitiveString = '' } },
+
+  -- Ctrl+b, C でワークスペースを作成
+  {
+    key = 'C',
+    mods = 'LEADER|SHIFT',
+    action = act.PromptInputLine {
       description = 'Enter name for new workspace',
       action = wezterm.action_callback(function(window, pane, line)
         if line then
-          window:perform_action(
-            wezterm.action.SwitchToWorkspace {
-              name = line,
-            },
-            pane
-          )
+          window:perform_action(act.SwitchToWorkspace { name = line }, pane)
         end
       end),
     },
   },
 
-  -- Ctrl+W, S でワークスペース一覧を表示して切り替え
+  -- Ctrl+b, s でワークスペース一覧を表示して切り替え
   {
     key = 's',
     mods = 'LEADER',
-    action = wezterm.action.ShowLauncherArgs {
-      flags = 'FUZZY|WORKSPACES',
-    },
+    action = act.ShowLauncherArgs { flags = 'FUZZY|WORKSPACES' },
   },
 }
 
 -- ペインリサイズモード用のキーテーブル
 config.key_tables = {
   resize_pane = {
-    { key = 'LeftArrow', action = wezterm.action.AdjustPaneSize { 'Left', 5 } },
-    { key = 'h', action = wezterm.action.AdjustPaneSize { 'Left', 5 } },
-    { key = 'RightArrow', action = wezterm.action.AdjustPaneSize { 'Right', 5 } },
-    { key = 'l', action = wezterm.action.AdjustPaneSize { 'Right', 5 } },
-    { key = 'UpArrow', action = wezterm.action.AdjustPaneSize { 'Up', 5 } },
-    { key = 'k', action = wezterm.action.AdjustPaneSize { 'Up', 5 } },
-    { key = 'DownArrow', action = wezterm.action.AdjustPaneSize { 'Down', 5 } },
-    { key = 'j', action = wezterm.action.AdjustPaneSize { 'Down', 5 } },
-    -- Escapeキーでリサイズモードを終了
+    { key = 'LeftArrow', action = act.AdjustPaneSize { 'Left', 5 } },
+    { key = 'h', action = act.AdjustPaneSize { 'Left', 5 } },
+    { key = 'RightArrow', action = act.AdjustPaneSize { 'Right', 5 } },
+    { key = 'l', action = act.AdjustPaneSize { 'Right', 5 } },
+    { key = 'UpArrow', action = act.AdjustPaneSize { 'Up', 5 } },
+    { key = 'k', action = act.AdjustPaneSize { 'Up', 5 } },
+    { key = 'DownArrow', action = act.AdjustPaneSize { 'Down', 5 } },
+    { key = 'j', action = act.AdjustPaneSize { 'Down', 5 } },
     { key = 'Escape', action = 'PopKeyTable' },
   },
 }
